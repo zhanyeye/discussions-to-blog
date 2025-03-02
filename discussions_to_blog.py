@@ -48,7 +48,7 @@ def write_markdown(discussion, output_dir):
     created_at = discussion["createdAt"]  
     year = created_at[:4]  
     month = created_at[5:7]  
-    post_dir = os.path.join(output_dir, year, month)  
+    post_dir = os.path.join('/github/workspace', output_dir, year, month)  
     os.makedirs(post_dir, exist_ok=True)  
 
     filename = f"{sanitize_filename(discussion['title'])}.md"  
