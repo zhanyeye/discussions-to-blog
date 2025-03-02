@@ -1,7 +1,7 @@
 # 使用一个轻量级的 Python 镜像  
 FROM python:3.9-slim  
 
-WORKDIR WORKDIR /app  
+WORKDIR /app  
 
 COPY requirements.txt .  
 
