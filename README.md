@@ -30,7 +30,7 @@ jobs:
         uses: actions/checkout@v3  
 
       - name: Sync Discussions  
-        uses: zhanyeye/discussions-to-blog@v1
+        uses: zhanyeye/discussions-to-blog@main
         with:  
           github_token: ${{ secrets.GITHUB_TOKEN }}  
           repo_owner: your-org  
