@@ -1,21 +1,26 @@
-name: Hello, World!
-description: Greet someone and record the time
-author: GitHub Actions
+name: Discussions To Blog
+description: 从 GitHub Discussions 中拉取指定 Category 帖子，并生成 Markdown 文件
+author: zhanyeye
 
 # Define your inputs here.
-inputs:
-  who-to-greet:
-    description: Who to greet
-    required: true
-    default: World
-
-# Define your outputs here.
-outputs:
-  time:
-    description: The time we greeted you
+inputs:  
+  github_token:  
+    description: "GitHub 令牌，用于调用 GraphQL API"  
+    required: true  
+  repo_owner:  
+    description: "仓库所有者"  
+    required: true  
+  repo_name:  
+    description: "仓库名称"  
+    required: true  
+  category_id:  
+    description: "Discussions 所属 Category 的 ID (GraphQL 查询时使用)"  
+    required: true  
+  delete_on_removed:  
+    description: "是否删除已不存在的帖子对应的 Markdown 文件 (true/false)"  
+    required: false  
+    default: "false"  
 
 runs:
   using: docker
   image: Dockerfile
-  env:
-    INPUT_WHO_TO_GREET: ${{ inputs.who-to-greet }}
