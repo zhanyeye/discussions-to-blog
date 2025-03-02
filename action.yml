@@ -13,6 +13,9 @@ inputs:
   repo_name:  
     description: "仓库名称"  
     required: true  
+  output_dir: 
+    description: "输出路径"  
+    required: true  
   category_id:  
     description: "Discussions 所属 Category 的 ID (GraphQL 查询时使用)"  
     required: true  
