@@ -13,5 +13,8 @@ RUN pip install --no-cache-dir -r requirements.txt
 # 复制所有文件到容器工作目录  
 COPY . .  
 
+# 调试：打印当前工作目录文件列表  
+RUN echo "打印 /github/workspace 文件列表:" && ls -la /github/workspace  
+
 # 声明入口文件 (entrypoint.py 必须存在于项目根目录)  
 ENTRYPOINT ["python", "entrypoint.py"]  
