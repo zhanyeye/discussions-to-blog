@@ -13,4 +13,4 @@ COPY . .
 
 
 # 声明入口文件 (entrypoint.py 必须存在于项目根目录)  
-ENTRYPOINT ["python", "entrypoint.py"]  entrypoint.py
+ENTRYPOINT ["python", "/app/entrypoint.py"]  entrypoint.py
