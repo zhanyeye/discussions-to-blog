@@ -1,11 +1,15 @@
-# Set the base image to use for subsequent instructions
-FROM alpine:3.21
+FROM python:3.9-slim  
 
-# Set the working directory inside the container
-WORKDIR /usr/src
+# 设置工作目录  
+WORKDIR /action  
 
-# Copy any source file(s) required for the action
-COPY entrypoint.sh .
+# 复制依赖文件并安装  
+COPY requirements.txt .  
+RUN pip install --no-cache-dir -r requirements.txt  
 
-# Configure the container to be run as an executable
-ENTRYPOINT ["/usr/src/entrypoint.sh"]
+# 复制脚本文件  
+COPY entrypoint.py .  
+COPY discussions_to_blog.py .  
+
+# 设置默认入口  
+ENTRYPOINT ["python", "entrypoint.py"]  
