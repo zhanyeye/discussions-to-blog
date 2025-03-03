@@ -23,7 +23,7 @@ def main():
     else:  
         with open(event_file_path, "r", encoding="utf-8") as f:  
             event = json.load(f)  
-        print(f"[INFO] 读取事件文件：{event_file_path}")
+            print(f"[INFO] 读取事件文件：{event}")
 
     # 调用核心逻辑  
     discussions_to_blog.run(  
