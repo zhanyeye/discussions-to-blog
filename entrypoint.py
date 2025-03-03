@@ -1,5 +1,6 @@
 #!/usr/bin/env python3  
 import os  
+import json
 import discussions_to_blog  
 
 def main():  
@@ -14,6 +15,15 @@ def main():
     # 检查必要参数是否存在  
     if not github_token or not repo_owner or not repo_name or not category_id:  
         raise ValueError("缺少必要的输入参数：github_token, repo_owner, repo_name, category_id")  
+
+    # 读取 github.event.json 文件  
+    event_file_path = "/github/workflow/event.json"  
+    if not os.path.exists(event_file_path):  
+        raise FileNotFoundError(f"无法找到 {event_file_path}，请确保在 GitHub Actions 中运行。")
+    else:  
+        with open(event_file_path, "r", encoding="utf-8") as f:  
+            event = json.load(f)  
+        print(f"[INFO] 读取事件文件：{event_file_path}")
 
     # 调用核心逻辑  
     discussions_to_blog.run(  
