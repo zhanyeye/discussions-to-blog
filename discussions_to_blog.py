@@ -101,17 +101,19 @@ def process_deleted(discussion, mapping):
         delete_markdown(filepath)
 
 
-def run(output_dir, event_file_path="/github/workflow/event.json", workspace_root="/github/workspace"):
+def run(output_dir, event_file_path="/github/workflow/event.json", workspace_root="/github/workspace", categories=None):
     """  
     主函数：根据 event.json 文件协调 Discussions 的处理  
     """
     if not os.path.exists(event_file_path):
         raise FileNotFoundError(f"无法找到事件文件 {event_file_path}。")
 
-        # 读取事件文件内容
+    # 读取event.json文件内容
     with open(event_file_path, "r", encoding="utf-8") as f:
         event = json.load(f)
     print(f"[INFO] 读取事件文件：{event}")
+
+
 
     # 加载 mapping 文件  
     mapping = load_mapping(output_dir, workspace_root)
@@ -119,6 +121,11 @@ def run(output_dir, event_file_path="/github/workflow/event.json", workspace_roo
     # 处理 discussion
     action = event["action"].lower()
     discussion = event["discussion"]
+
+    if categories and discussion["category"]["slug"].lower() not in categories:
+        print("此 category 不需要转 blog")
+        exit(0)
+
 
     if action == "created":
         print(f"[INFO] 处理新增事件: {discussion['html_url']}")

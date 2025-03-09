@@ -6,7 +6,8 @@ A GitHub Action to sync GitHub Discussions from a specific category to Markdown 
 
 | Name              | Description                                      | Required | Default         |  
 |-------------------|--------------------------------------------------|----------|-----------------|
-| `output_dir`      | The directory to save Markdown files.            | No       | `content/posts` |
+| `categories`     | Categories from the Discussions that have been selected to be converted to blog posts              | Yes      | N/A             |  
+| `output_dir`      | The directory to save Markdown files.            | Yes      | `content/posts` |
 
 ## Example Usage  
 
@@ -27,6 +28,7 @@ jobs:
       - name: Sync Discussions  
         uses: zhanyeye/discussions-to-blog@main
         with:   
+          categories： Announcements, General
           output_dir: content/posts
       
       - name: Commit and Push Changes  
