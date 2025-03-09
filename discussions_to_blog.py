@@ -1,124 +1,137 @@
-import os  
-import requests  
-import json  
+import os
+import json
+import requests
+from pathlib import Path
 
-# GitHub GraphQL API  
-GRAPHQL_API = "https://api.github.com/graphql"  
 
-def fetch_discussions(github_token, repo_owner, repo_name, category_id):  
-    """从 GitHub GraphQL API 获取 Discussions 数据"""  
-    query = """  
-    query($repoOwner: String!, $repoName: String!, $categoryId: ID!) {  
-      repository(owner: $repoOwner, name: $repoName) {  
-        discussions(first: 100, categoryId: $categoryId) {  
-          nodes {  
-            id  
-            title  
-            body  
-            createdAt  
-            updatedAt  
-          }  
-        }  
-      }  
-    }  
+def sanitize_filename(title):
     """  
-    headers = {  
-        "Authorization": f"Bearer {github_token}",  
-        "Content-Type": "application/json"  
-    }  
-    payload = {  
-        "query": query,  
-        "variables": {  
-            "repoOwner": repo_owner,  
-            "repoName": repo_name,  
-            "categoryId": category_id  
-        }  
-    }  
-    response = requests.post(GRAPHQL_API, json=payload, headers=headers)  
-    response.raise_for_status()  
-    data = response.json()  
-    return data["data"]["repository"]["discussions"]["nodes"]  
+    对标题进行处理，转换为合法的文件名  
+    """
+    return title.strip().replace(" ", "-").replace("/", "-").replace("\\", "-").lower()
 
-def sanitize_filename(title):  
-    """对标题进行处理，转换为合法文件名"""  
-    return title.strip().replace(" ", "-").replace("/", "-").replace("\\", "-").lower()  
 
-def write_markdown(discussion, output_dir):  
-    """将 Discussions 数据写入 Markdown 文件"""  
-    created_at = discussion["createdAt"]  
-    year = created_at[:4]  
-    month = created_at[5:7]  
-    post_dir = os.path.join('/github/workspace', output_dir, year, month)  
-    os.makedirs(post_dir, exist_ok=True)  
+def write_markdown(discussion, output_dir, workspace_root):
+    """  
+    将 Discussion 数据写入 Markdown 文件  
+    """
+    created_at = discussion['updated_at']
+    year = created_at[:4]
+    month = created_at[5:7]
+    post_dir = os.path.join(workspace_root, output_dir, year, month)
+    os.makedirs(post_dir, exist_ok=True)
 
-    filename = f"{sanitize_filename(discussion['title'])}.md"  
-    filepath = os.path.join(post_dir, filename)  
+    filename = f"{sanitize_filename(discussion['title'])}.md"
+    filepath = os.path.join(post_dir, filename)
 
-    # Markdown 文件内容  
+    # 构造 Markdown 内容（含 Front Matter）  
     front_matter = f"""---  
 title: "{discussion['title']}"  
-date: "{discussion['createdAt']}"  
+date: "{discussion['updated_at']}"  
 draft: false  
-discussion_id: "{discussion['id']}"  
+discussion_id: "{discussion['node_id']}"  
 ---  
-"""  
-    content = front_matter + "\n" + discussion["body"]  
+"""
+    content = front_matter + "\n" + discussion["body"]
 
-    # 写入文件  
-    with open(filepath, "w", encoding="utf-8") as f:  
-        f.write(content)  
-    print(f"[INFO] 文件已生成：{filepath}")  
+    with open(filepath, "w", encoding="utf-8") as f:
+        f.write(content)
+    print(f"[INFO] 文件已生成：{filepath}")
 
-    return discussion["id"]  
+    return filepath
 
-def delete_removed_files(old_ids, current_ids, output_dir):  
-    """删除已不存在 Discussions 的 Markdown 文件"""  
-    removed_ids = set(old_ids) - set(current_ids)  
-    if not removed_ids:  
-        print("[INFO] 未检测到需要删除的文件")  
-        return  
 
-    for root, _, files in os.walk(output_dir):  
-        for file in files:  
-            if file.endswith(".md"):  
-                filepath = os.path.join(root, file)  
-                with open(filepath, "r", encoding="utf-8") as f:  
-                    content = f.read()  
-                if any(f'discussion_id: "{rid}"' in content for rid in removed_ids):  
-                    os.remove(filepath)  
-                    print(f"[INFO] 已删除文件：{filepath}")  
+def delete_markdown(filepath):
+    """  
+    删除指定 Markdown 文件  
+    """
+    if os.path.exists(filepath):
+        os.remove(filepath)
+        print(f"[INFO] 删除 Markdown 文件：{filepath}")
+    else:
+        print(f"[WARNING] 文件不存在：{filepath}")
 
-def load_cache(cache_file):  
-    """加载缓存文件，并返回 IDs 列表"""  
-    if os.path.exists(cache_file):  
-        with open(cache_file, "r", encoding="utf-8") as f:  
-            return json.load(f)  
-    return []  
 
-def save_cache(cache_file, ids):  
-    """保存当前 IDs 列表到缓存文件"""  
-    with open(cache_file, "w", encoding="utf-8") as f:  
-        json.dump(ids, f)  
+def load_mapping(output_dir, workspace_root):
+    """  
+    加载映射文件并解析为字典  
+    """
+    map_path = os.path.join(workspace_root, output_dir, ".discussions_map.json")
+    if os.path.exists(map_path):
+        with open(map_path, "r", encoding="utf-8") as f:
+            return json.load(f)
+    return {}
 
-def run(github_token, repo_owner, repo_name, category_id, output_dir, delete_on_removed):  
-    """执行 Discussions 同步和 Markdown 文件生成的主流程"""  
-    # 拉取 Discussions 数据  
-    discussions = fetch_discussions(github_token, repo_owner, repo_name, category_id)  
 
-    # 加载缓存文件  
-    cache_file = ".discussions_cache.json"  
-    old_ids = load_cache(cache_file)  
+def save_mapping(output_dir, workspace_root, mapping):
+    """  
+    保存映射文件  
+    """
+    map_path = os.path.join(workspace_root, output_dir, ".discussions_map.json")
+    with open(map_path, "w", encoding="utf-8") as f:
+        json.dump(mapping, f, indent=2)
+    print(f"[INFO] 映射文件已更新：{map_path}")
 
-    # 写入 Markdown 文件  
-    current_ids = []  
-    for discussion in discussions:  
-        discussion_id = write_markdown(discussion, output_dir)  
-        current_ids.append(discussion_id)  
 
-    # 删除不存在的 Discussions 的 Markdown 文件  
-    if delete_on_removed:  
-        delete_removed_files(old_ids, current_ids, output_dir)  
+def process_created(discussion, output_dir, workspace_root, mapping):
+    """  
+    处理 "created" 事件  
+    """
+    filepath = write_markdown(discussion, output_dir, workspace_root)
+    mapping[discussion["node_id"]] = filepath
 
-    # 保存最新 ID 列表到缓存  
-    save_cache(cache_file, current_ids)  
+
+def process_updated(discussion, output_dir, workspace_root, mapping):
+    """
+    处理 "edited" 事件
+    """
+    filepath = mapping.get(discussion["node_id"])
+    if filepath and Path(filepath).stem != discussion["title"]:
+        delete_markdown(filepath)
+    new_filepath = write_markdown(discussion, output_dir, workspace_root)
+    mapping[discussion["node_id"]] = new_filepath
+
+
+def process_deleted(discussion, mapping):
+    """  
+    处理 "deleted" 事件  
+    """
+    filepath = mapping.pop(discussion["node_id"], None)
+    if filepath:
+        delete_markdown(filepath)
+
+
+def run(output_dir, event_file_path="/github/workflow/event.json", workspace_root="/github/workspace"):
+    """  
+    主函数：根据 event.json 文件协调 Discussions 的处理  
+    """
+    if not os.path.exists(event_file_path):
+        raise FileNotFoundError(f"无法找到事件文件 {event_file_path}。")
+
+        # 读取事件文件内容
+    with open(event_file_path, "r", encoding="utf-8") as f:
+        event = json.load(f)
+    print(f"[INFO] 读取事件文件：{event}")
+
+    # 加载 mapping 文件  
+    mapping = load_mapping(output_dir, workspace_root)
+
+    # 处理 discussion
+    action = event["action"].lower()
+    discussion = event["discussion"]
+
+    if action == "created":
+        print(f"[INFO] 处理新增事件: {discussion['html_url']}")
+        process_created(discussion, output_dir, workspace_root, mapping)
+    elif action == "edited":
+        print(f"[INFO] 处理编辑事件: {discussion['html_url']}")
+        process_updated(discussion, output_dir, workspace_root, mapping)
+    elif action == "deleted":
+        print(f"[INFO] 处理删除事件: {discussion['html_url']}")
+        process_deleted(discussion, mapping)
+    else:
+        print(f"[WARNING] 未知动作 {action}，跳过 discussion_id: {discussion['html_url']}")
+
+    # 保存最新的 mapping 文件  
+    save_mapping(output_dir, workspace_root, mapping)
     print("[INFO] Discussions 同步完成！")
